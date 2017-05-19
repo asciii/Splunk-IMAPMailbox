@@ -246,7 +246,7 @@ class IMAPProcessor(object):
 			
 			if self.splunkxpassword:
 				try:
-					p = subprocess.Popen('openssl bf -d -a -pass file:%s' % (os.path.join(os.environ['SPLUNK_HOME'],'etc','auth', 'splunk.secret')), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+					p = subprocess.Popen('openssl bf -d -a -pass file:"%s"' % (os.path.join(os.environ['SPLUNK_HOME'],'etc','auth', 'splunk.secret')), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 					self.splunkpassword = p.communicate(self.splunkxpassword + '\n')[0]
 				except Exception, e:
 					if self.debug:
@@ -316,7 +316,7 @@ class IMAPProcessor(object):
 		# If the user supplied encrypted password then we need to unencrypt.
 		if self.xpassword:
 			try:
-				p = subprocess.Popen('openssl bf -d -a -pass file:%s' % (os.path.join(os.environ['SPLUNK_HOME'],'etc','auth', 'splunk.secret')), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+				p = subprocess.Popen('openssl bf -d -a -pass file:"%s"' % (os.path.join(os.environ['SPLUNK_HOME'],'etc','auth', 'splunk.secret')), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 				self.password = p.communicate(self.xpassword + '\n')[0]
 			except Exception, e:
 				if self.debug:

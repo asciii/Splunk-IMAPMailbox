@@ -22,7 +22,7 @@ if [ $pass = $pass2 ]; then
 
     echo ""
     echo ""
-    echo -n $pass | openssl bf -e -a -pass file:$SPLUNK_HOME/etc/auth/splunk.secret
+    echo -n $pass | openssl bf -e -a -pass file:"$SPLUNK_HOME/etc/auth/splunk.secret"
     
     echo ""
     echo "Copy the string on the line above and paste it into"
