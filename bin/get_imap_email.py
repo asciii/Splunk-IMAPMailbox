@@ -617,9 +617,9 @@ class IMAPProcessor(object):
 				if not self.fullHeaders:
 					lk = string.lower(k)
 					if lk == 'from' or lk == 'to' or lk == 'subject' or lk == 'date' or lk == 'cc':
-						cstr.write(k +	' = "' + string.replace(v,'"','') + '"\n')
+						cstr.write(k +	' = "' + string.replace(v,'"','').replace('\n', '').replace('\r', '') + '"\n')
 				else:
-					cstr.write(k +	' = "' + string.replace(v,'"','') + '"\n')
+					cstr.write(k +	' = "' + string.replace(v,'"','').replace('\n', '').replace('\r', '') + '"\n')
 	
 			# include size and name of folder since they are not part of header
 			# interestingly, sometimes these come back quoted - so check.
