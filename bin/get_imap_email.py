@@ -186,7 +186,7 @@ class IMAPProcessor(object):
                 # check to see if the current/default value is a boolean; if so,
                 # makes user user supplied value is a bool, will convert string to bool.
                 # ie. makes 0 = False and 1 = True
-                if val.__class__ == bool:
+                if isinstance(val, bool):
                     val = (config.get(configSectionName, o).strip().lower() == "true")
                     if config.get(configSectionName, o) == "1":
                         val = True
@@ -211,8 +211,8 @@ class IMAPProcessor(object):
                 # check to see if the current/default value is a boolean. If so,
                 # then the value is true if specified as a flag; otherwise, convert
                 # the option value to a bool.
-                if val.__class__ == bool:
-                    if (a == None or len(a) == 0) :
+                if isinstance(val, bool):
+                    if (a is None or len(a) == 0) :
                         val = True
                     else:
                         val = (a.strip().lower() == "true")
@@ -289,7 +289,7 @@ class IMAPProcessor(object):
                 now = datetime.datetime.now()
                 #if (now - start).seconds > self.timeout:
                 if int((now - start).seconds) > int(self.timeout):
-                    logging.debug("REST response took more than %s seconds, timing out...using default UID of 0 i.e. same as noCache" % str(self.timeout))
+                    logging.debug("REST response took more than %s seconds, timing out...using default UID of 0 i.e. same as noCache", self.timeout)
                     break
 
 
@@ -353,8 +353,8 @@ class IMAPProcessor(object):
 
             # See if we need to interate all folders put them into a list
             if self.folders.lower() == "all":
-                result,list = M.list();
-                for f in list[:]:
+                _, list_ = M.list()
+                for f in list_[:]:
                     x = f.split()
                     mailbox = " ".join(x[2:])
                     folder_list.append(mailbox)
@@ -445,7 +445,7 @@ class IMAPProcessor(object):
             if self.debug:
                 logging.debug(e)
                 print(traceback.print_exc(file=sys.stderr))
-            logging.error("ERROR - trying to select mailbox")
+            logging.exception("ERROR - trying to select mailbox")
 
 
         try:
@@ -469,19 +469,19 @@ class IMAPProcessor(object):
                 logging.debug("about so imap search with : " + searchStr)
                 counter = counter + chunksize
 
-                typ, data = M.search(None, searchStr)
+                _, data = M.search(None, searchStr)
                 ids = data[0].split()
                 if len(ids) < 1:
-                    continue;
-                logging.debug("returned from search with " + str(len(ids)) + "ids")
-                logging.debug("id return from search : " + str(ids))
+                    continue
+                logging.debug("returned from search with %d ids", len(ids))
+                logging.debug("id return from search : %s", ids)
 
                 # for each message id....
                 for num in ids:
                     try:
                         self.fetchMessage(M, box, num, "")
                     except Exception as e:
-                        logging.debug("ERROR trying to fetrucn message id: " + num)
+                        logging.debug("ERROR trying to fetrucn message id: %s", num)
                         if self.debug:
                             logging.debug(e)
                             print(traceback.print_exc(file=sys.stderr))
@@ -496,7 +496,7 @@ class IMAPProcessor(object):
     def getInternalDate(self, M, box, num):
         dstr = ''
         try:
-            typ, data = M.fetch(num, '(INTERNALDATE)')
+            _, data = M.fetch(num, '(INTERNALDATE)')
             dates = data[0]
             begin = dates.find('"')
             end = dates.rfind('"')
@@ -514,27 +514,27 @@ class IMAPProcessor(object):
     # so we read starting the day and then skip ahead, kinda lame.
     # ------------------------------------------------------------------
     def getLatestMail( self, latestTimeStr, M, box, endid):
-        logging.debug("About to get lastest mail sinze " + latestTimeStr )
+        logging.debug("About to get lastest mail since %s", latestTimeStr)
 
         # convert to a datetime so we can compare
         lastDateTime = datetime.datetime.strptime(latestTimeStr[:-6],"%d-%b-%Y %H:%M:%S")
-        logging.debug("datetime for latest is " + str(lastDateTime))
+        logging.debug("datetime for latest is %s", lastDateTime)
 
         # strip off the time, since imap only does day granularity
         justDate = latestTimeStr.split(' ')[0]
         searchStr = "(" + self.imapSearch + " SINCE " + justDate + ")"
-        logging.debug("About to search IMAP using ; " + searchStr)
-        typ, data = M.search(None, searchStr)
-        logging.debug("Got back the following for the day " +  str(data) );
+        logging.debug("About to search IMAP using ; %s", searchStr)
+        _, data = M.search(None, searchStr)
+        logging.debug("Got back the following for the day %s", data)
 
         ids = data[0].split()
-        logging.debug("returned from search with " + str(len(ids)) + "ids")
-        logging.debug("id return from search : " + str(ids))
+        logging.debug("returned from search with %d ids", len(ids))
+        logging.debug("id return from search : %s", ids)
 
         # if empty there is no new data, bail.
         if len(ids) < 1:
             logging.debug("Got zero ids, doing nothihng")
-            return;
+            return
 
         # for each new message id
         for num in ids:
@@ -545,7 +545,7 @@ class IMAPProcessor(object):
 
             # convert message date to datetime so we can compare
             msgDateTime = datetime.datetime.strptime(dstr[:-6],"%d-%b-%Y %H:%M:%S")
-            logging.debug("datetime for message " + str(msgDateTime))
+            logging.debug("datetime for message %s", msgDateTime)
 
             # see if we are caught up yet...
             if lastDateTime < msgDateTime:
@@ -556,11 +556,11 @@ class IMAPProcessor(object):
     # print body message to STDOUT for indexing
     # ------------------------------------------------
     def printBody( self, message, body, cstr ):
-        if 'Content-Transfer-Encoding' in message and message.get('Content-Transfer-Encoding')=='base64':
+        if message.get('Content-Transfer-Encoding', '') == 'base64':
             try:
                 body = base64.b64decode(body)
                 #cstr.write('decoded base64 successfully' + '\n')
-            except:
+            except ValueError:
                 cstr.write('WARNING - could not decode base64' + '\n')
         #pj suggested improvement by vragosta to get rid of occasional " =20" at end of lines.
         #cstr.write(body + '\n')
@@ -574,7 +574,7 @@ class IMAPProcessor(object):
         try:
 
             # get UID
-            typ, data = M.fetch(num, 'UID')
+            _, data = M.fetch(num, 'UID')
             uid = int(data[0].split()[0])
             lastUID = uid
 
@@ -583,7 +583,7 @@ class IMAPProcessor(object):
 
             # get message body
             try:
-                typ, data = M.fetch(num, '(BODY.PEEK[])')
+                _, data = M.fetch(num, '(BODY.PEEK[])')
                 #typ, data = M.fetch(num, '(RFC822)')
                 body = data[0][1]
             except:
@@ -595,7 +595,7 @@ class IMAPProcessor(object):
 
 
             # get message size
-            typ, data = M.fetch(num, '(RFC822.SIZE)')
+            _, data = M.fetch(num, '(RFC822.SIZE)')
             size = data[0].split()
             size = size[-1].replace(')', '')
 
@@ -605,29 +605,27 @@ class IMAPProcessor(object):
             # Try printing out the date first, we will use this to break the events.
             if dstr == '':
                 dstr = 'no date in message'
-                if 'date' in message:
-                    dstr = message['date']
-                elif 'Date' in message:
-                    dstr = message['Date']
-                elif 'DATE' in message:
-                    dstr = message['DATE']
+                for date_attr in ("date", "Date", "DATE"):
+                    if date_attr in message:
+                        dstr = message[date_attr]
+                        break
 
             cstr.write('Date = "' + dstr + '"\n')
 
 
             for k, v in message.items():
-                if k == 'date' or k == 'Date':
+                lk = k.lower()
+                if lk == 'date':
                     continue
                 if not self.fullHeaders:
-                    lk = k.lower()
-                    if lk == 'from' or lk == 'to' or lk == 'subject' or lk == 'date' or lk == 'cc':
+                    if lk in('from', 'to', 'subject', 'date', 'cc'):
                         cstr.write(k + ' = "' + v.replace('"', '').replace('\n', '').replace('\r', '') + '"\n')
                 else:
                     cstr.write(k + ' = "' + v.replace('"', '').replace('\n', '').replace('\r', '') + '"\n')
 
             # include size and name of folder since they are not part of header
             # interestingly, sometimes these come back quoted - so check.
-            if box[0]=="'" or box[0]=='"':
+            if box[0] in ("'", '"'):
                 cstr.write('mailbox = ' + box + '\n')
             else:
                 cstr.write('mailbox = "' + box + '"\n')
@@ -669,7 +667,7 @@ class IMAPProcessor(object):
                 if self.debug:
                     for part in message.walk():
                         cstr.write("ContentType :       " + part.get_content_type() + '\n')
-                        logging.debug("No message context to print as value includeBody is set to False" + '\n')
+                        logging.debug("No message context to print as value includeBody is set to False")
 
             cstr.write(self.END_IMAP_BREAKER)
 
@@ -680,7 +678,7 @@ class IMAPProcessor(object):
 
             # if delete when done, then mark the message
             if self.deleteWhenDone:
-                M.store(num, '+Flags', '(\Deleted)')
+                M.store(num, '+Flags', r'(\Deleted)')
 
 
         except Exception as e:
@@ -705,7 +703,7 @@ def parseArgs():
             return
         imapProc.initFromOptlist(optlist)
     except getopt.error as val:
-        logging.error("str(val) # tell them what was wrong")
+        logging.error("val=%s # tell them what was wrong", val)
         imapProc.usage()
         raise ConfigError("Incorrect usage...")
 

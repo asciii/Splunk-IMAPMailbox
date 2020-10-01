@@ -59,7 +59,7 @@ class IMAPHandler(admin.MConfigHandler):
         if not passwdProvided:
             raise admin.ArgValidationException("Either password or xpassword must be provided")
 
-        self.updateConf("imap", self.callerArgs.id, self.callerArgs.data);
+        self.updateConf("imap", self.callerArgs.id, self.callerArgs.data)
 
 
     # ---------------------------------------
