@@ -51,13 +51,13 @@ class IMAPHandler(admin.MConfigHandler):
     settings = self.callerArgs.copy()
     passwdProvided = False
 
-    if 'password' in self.callerArgs.data.keys() and self.callerArgs['password']:
+    if 'password' in self.callerArgs.data and self.callerArgs['password']:
        passwdProvided = True
-    elif 'xpassword' in self.callerArgs.data.keys() and self.callerArgs['xpassword']:
+    elif 'xpassword' in self.callerArgs.data and self.callerArgs['xpassword']:
        passwdProvided = True
 
     if not passwdProvided:
-       raise admin.ArgValidationException, "Either password or xpassword must be provided"   
+       raise admin.ArgValidationException("Either password or xpassword must be provided")
      
     self.updateConf("imap", self.callerArgs.id, self.callerArgs.data);
   
@@ -71,8 +71,8 @@ class IMAPHandler(admin.MConfigHandler):
     # if the file doesn't exist, None is returned.
     if None != confDict:
       # return all these settings by populating confInfo.
-      for stanza, settings in confDict.items():
-        for key, val in settings.items():
+      for stanza, settings in list(confDict.items()):
+        for key, val in list(settings.items()):
           confInfo[stanza].append(key, val)
 
 
@@ -85,7 +85,7 @@ class IMAPHandler(admin.MConfigHandler):
     existing = admin.ConfigInfo()
     self.handleList(existing)
     if not self.callerArgs.id in existing:
-      raise admin.ArgValidationException, "Cannot remove '%s', it does not exist." % self.callerArgs.id
+      raise admin.ArgValidationException("Cannot remove '%s', it does not exist." % self.callerArgs.id)
 
     # now that we're sure, set it to disabled and write it out.
     settsDict = self.readConf("imap")[self.callerArgs.id]
@@ -102,7 +102,7 @@ class IMAPHandler(admin.MConfigHandler):
     existing = admin.ConfigInfo()
     self.handleList(existing)
     if not self.callerArgs.id in existing:
-      raise admin.ArgValidationException, "Cannot edit '%s', it does not exist." % self.callerArgs.id
+      raise admin.ArgValidationException("Cannot edit '%s', it does not exist." % self.callerArgs.id)
 
     self.updateConf("imap", self.callerArgs.id, self.callerArgs.data)
 

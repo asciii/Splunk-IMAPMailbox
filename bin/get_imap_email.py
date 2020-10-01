@@ -32,7 +32,13 @@ __doc__ = """
 """
 
 import getopt, sys, imaplib, os, string, email, logging, time
-import subprocess, ConfigParser, traceback, datetime, cStringIO, base64, quopri
+import subprocess, traceback, datetime, io, base64, quopri
+
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
+
 
 # Generic error class
 class ConfigError(Exception):
@@ -138,8 +144,7 @@ class IMAPProcessor(object):
  
 		if self.debug:
 		  logging.basicConfig(level=logging.DEBUG)
-		  keys = self.__dict__.keys();
-		  keys.sort();
+		  keys = sorted(self.__dict__.keys())
 		  for k in keys:
 			if k.startswith("_"): continue
 			logging.debug(k + "=" + str(self.__dict__[k]))
@@ -173,8 +178,7 @@ class IMAPProcessor(object):
 		path = configDefaultFileName
 	  else:
 		return
-          # future fyi, v3 will rename ConfigParser to configparser
-	  config = ConfigParser.RawConfigParser()
+	  config = RawConfigParser()
 	  config.read(path)
 	  for o in configOptions:
 		if config.has_option(configSectionName, o):
@@ -248,10 +252,10 @@ class IMAPProcessor(object):
 				try:
 					p = subprocess.Popen('openssl bf -d -a -pass file:"%s"' % (os.path.join(os.environ['SPLUNK_HOME'],'etc','auth', 'splunk.secret')), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 					self.splunkpassword = p.communicate(self.splunkxpassword + '\n')[0]
-				except Exception, e:
+				except Exception as e:
 					if self.debug:
 						logging.error(e)
-						print traceback.print_exc(file=sys.stderr)
+						print(traceback.print_exc(file=sys.stderr))
 					raise ConfigError('Could not decrypt splunkxpassword')
 		
 			logging.debug("decrypted splunk password")
@@ -259,9 +263,9 @@ class IMAPProcessor(object):
 			splunk.mergeHostPath(self.splunkHostPath, True)
 			try:
 				key = au.getSessionKey(self.splunkuser, self.splunkpassword)
-			except httplib2.ServerNotFoundError, e:
+			except httplib2.ServerNotFoundError as e:
 				raise LoginError("Unable to find the server at %s" % self.splunkHostPath)
-			except Exception, e:
+			except Exception as e:
 				raise LoginError("userid/password combination for splunk user is invalid...")
 			
 			if not key:
@@ -294,7 +298,7 @@ class IMAPProcessor(object):
 			try:
 				retVal = str(job.results[0]['max(Date)'])
 				logging.debug(" got back " + str(retVal))
-			except Exception, e:
+			except Exception as e:
 				logging.debug(str(e))
 				logging.debug(" mailbox was empty ")
 				retVal = "" 
@@ -318,10 +322,10 @@ class IMAPProcessor(object):
 			try:
 				p = subprocess.Popen('openssl bf -d -a -pass file:"%s"' % (os.path.join(os.environ['SPLUNK_HOME'],'etc','auth', 'splunk.secret')), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 				self.password = p.communicate(self.xpassword + '\n')[0]
-			except Exception, e:
+			except Exception as e:
 				if self.debug:
 					logging.debug(e)
-					print traceback.print_exc(file=sys.stderr)
+					print(traceback.print_exc(file=sys.stderr))
 				raise ConfigError('Could not decrypt xpassword')
 
 		# Try and login
@@ -338,10 +342,10 @@ class IMAPProcessor(object):
 					M = imaplib.IMAP4(self.server)
 					
 			M.login(self.user, self.password)
-		except Exception, e:
+		except Exception as e:
 			if self.debug:
 				logging.debug(e)
-				print traceback.print_exc(file=sys.stderr)
+				print(traceback.print_exc(file=sys.stderr))
 			raise LoginError('Could not log into server: %s with password provided' % self.server)
 
 		try:	   
@@ -368,21 +372,21 @@ class IMAPProcessor(object):
 		  for i in folder_list:
 			self.getMailbox(M, i)
 
-		except LoginError, e:
+		except LoginError as e:
 			if self.debug:
 				logging.debug(e)		 
-				print traceback.print_exc(file=sys.stderr)		
+				print(traceback.print_exc(file=sys.stderr))
 			raise e
-		except ConfigError, e:
+		except ConfigError as e:
 			if self.debug:
 				logging.debug(e)		 
-				print traceback.print_exc(file=sys.stderr)		
+				print(traceback.print_exc(file=sys.stderr))
 			M.logout()
 			raise e
-		except Exception, e:		  
+		except Exception as e:
 			if self.debug:
 				logging.debug(e)		 
-				print traceback.print_exc(file=sys.stderr)		
+				print(traceback.print_exc(file=sys.stderr))
 			logging.error("ERROR - trying to login to server and get folders")
 		
 		  
@@ -423,8 +427,8 @@ class IMAPProcessor(object):
 		  # each mailbox is its own source. i
 		  # We use the ***SPLUNK*** header processor trick to change sources for each event
 		  # each of the below must be on its own line, thus the breaker text after.
-		  print "***SPLUNK*** source="+box + " sourcetype=imap host=" + self.server
-		  print self.END_IMAP_BREAKER
+		  print("***SPLUNK*** source="+box + " sourcetype=imap host=" + self.server)
+		  print(self.END_IMAP_BREAKER)
 
 		  if latestTime == "":
 			  self.getAllMail(M, box, endid)
@@ -437,13 +441,13 @@ class IMAPProcessor(object):
 		  if resCode == 'NO':
 			  raise ConfigError("Folder name %s does not exist..." % box)
 
-		except Exception, e:
+		except Exception as e:
 			if self.debug:
 				logging.debug(e)		 
-				print traceback.print_exc(file=sys.stderr)		
+				print(traceback.print_exc(file=sys.stderr))
 			logging.error("ERROR - trying to select mailbox")
 
-		
+
 		try:
 		  M.close()
 		except:
@@ -476,15 +480,15 @@ class IMAPProcessor(object):
 				for num in ids:
 					try:
 						self.fetchMessage(M, box, num, "")
-					except Exception, e:
+					except Exception as e:
 						logging.debug("ERROR trying to fetrucn message id: " + num)
 						if self.debug:
 							logging.debug(e)
-							print traceback.print_exc(file=sys.stderr)		
+							print(traceback.print_exc(file=sys.stderr))
 	
 		except:
 			if self.debug:
-				print traceback.print_exc(file=sys.stderr)		
+				print(traceback.print_exc(file=sys.stderr))
 			logging.error("ERROR - trying to search mailbox")
 
 
@@ -552,7 +556,7 @@ class IMAPProcessor(object):
         # print body message to STDOUT for indexing
         # ------------------------------------------------
 	def printBody( self, message, body, cstr ):
-		if message.has_key('Content-Transfer-Encoding') and message.get('Content-Transfer-Encoding')=='base64':    
+		if 'Content-Transfer-Encoding' in message and message.get('Content-Transfer-Encoding')=='base64':
 			try:
 				body = base64.b64decode(body)
 				#cstr.write('decoded base64 successfully' + '\n')
@@ -566,7 +570,7 @@ class IMAPProcessor(object):
         # Get and print to STDOUT the mail message
         # -------------------------------------------------
 	def fetchMessage( self, M, box, num , dstr):
-		cstr = cStringIO.StringIO()   
+		cstr = io.StringIO()
 		try:
 			  
 			# get UID
@@ -586,7 +590,7 @@ class IMAPProcessor(object):
 				logging.debug("Fetch error" + num )
 				if self.debug:
 					logging.debug(e)
-					print traceback.print_exc(file=sys.stderr)
+					print(traceback.print_exc(file=sys.stderr))
 
 
 
@@ -601,11 +605,11 @@ class IMAPProcessor(object):
 			# Try printing out the date first, we will use this to break the events.
 			if dstr == '':
 			  dstr = 'no date in message'
-			  if message.has_key('date'):
+			  if 'date' in message:
 				  dstr = message['date']
-			  elif message.has_key('Date'):
+			  elif 'Date' in message:
 				  dstr = message['Date']
-			  elif message.has_key('DATE'):
+			  elif 'DATE' in message:
 				  dstr = message['DATE']
 
 			cstr.write('Date = "' + dstr + '"\n')
@@ -665,25 +669,25 @@ class IMAPProcessor(object):
 				if self.debug:
 					for part in message.walk():
 						cstr.write("ContentType :	" + part.get_content_type() + '\n')
-                                                logging.debug("No message context to print as value includeBody is set to False" + '\n') 
+                                                logging.debug("No message context to print as value includeBody is set to False" + '\n')
 
 			cstr.write(self.END_IMAP_BREAKER)
 
 			if self.useBodySourceType:
 			  # set us back to mail sourcetype
 			  cstr.write("***splunk*** sourcetype=" + self.headerSourceType + '\n')
-			print cstr.getvalue()	  
+			print(cstr.getvalue())
 
 			# if delete when done, then mark the message
 			if self.deleteWhenDone:
 				M.store(num, '+Flags', '(\Deleted)')
 
 
-		except Exception, e:
+		except Exception as e:
 			logging.debug("1. Failed to get and print message with UID " + num )
 			if self.debug:
 				logging.debug(e)
-				print traceback.print_exc(file=sys.stderr)
+				print(traceback.print_exc(file=sys.stderr))
 			logging.debug("2. Failed to get and print message with UID " + num )
 
 			
@@ -697,10 +701,10 @@ def parseArgs():
 	try:
 	  optlist, args = getopt.getopt(sys.argv[1:], '?',['version', 'server=','user=', 'password=', 'xpassword=', 'port=', 'folders=', 'imapSearch=', 'fullHeaders=', 'includeBody=', 'mimeTypes=', 'splunkuser=', 'splunkpassword=', 'splunkxpassword=', 'splunkHostPath=', 'timeout=', 'noCache', 'debug', 'useSSL=', 'deleteWhenDone='])
 	  if 'version' in args:
-		print sys.argv[0], "version =",  str(imapProc.version)
+		print(sys.argv[0], "version =",  str(imapProc.version))
 		return
 	  imapProc.initFromOptlist(optlist)
-	except getopt.error, val:
+	except getopt.error as val:
 	  logging.error("str(val) # tell them what was wrong")
 	  imapProc.usage()
 	  raise ConfigError("Incorrect usage...")
