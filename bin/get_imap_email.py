@@ -128,7 +128,7 @@ class IMAPProcessor(object):
         self.body_separator = '____________________  Message Body  ____________________'
         self.headerSourceType = 'imap'
         self.useBodySourceType = False
-        self.version = "2.0"
+        self.version = "2.0.4"
 
 
     # -----------------------------------
