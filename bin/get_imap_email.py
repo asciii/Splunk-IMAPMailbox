@@ -31,7 +31,7 @@ __doc__ = """
 #
 """
 
-import getopt, sys, imaplib, os, string, email, logging, time
+import getopt, sys, imaplib, os, email, logging, time
 import subprocess, traceback, datetime, io, base64, quopri
 
 try:
@@ -356,7 +356,7 @@ class IMAPProcessor(object):
 			  result,list = M.list();
 			  for f in list[:]:
 				  x = f.split()
-				  mailbox = string.join(x[2:])
+				  mailbox = " ".join(x[2:])
 				  folder_list.append(mailbox)
 		  
 		  # If the user supplied a list of mailboxes, split them up and put in list
@@ -619,11 +619,11 @@ class IMAPProcessor(object):
 				if k == 'date' or k == 'Date':
 				  continue
 				if not self.fullHeaders:
-					lk = string.lower(k)
+					lk = k.lower()
 					if lk == 'from' or lk == 'to' or lk == 'subject' or lk == 'date' or lk == 'cc':
-						cstr.write(k +	' = "' + string.replace(v,'"','').replace('\n', '').replace('\r', '') + '"\n')
+						cstr.write(k + ' = "' + v.replace('"', '').replace('\n', '').replace('\r', '') + '"\n')
 				else:
-					cstr.write(k +	' = "' + string.replace(v,'"','').replace('\n', '').replace('\r', '') + '"\n')
+					cstr.write(k + ' = "' + v.replace('"', '').replace('\n', '').replace('\r', '') + '"\n')
 	
 			# include size and name of folder since they are not part of header
 			# interestingly, sometimes these come back quoted - so check.
