@@ -134,6 +134,12 @@ In my case I forward all unix root system messages to one mailbox that I index f
 
 I've signed up for mailing lists to my indexed email address and create reports and alerts based on only certain content I'm interested in looking for.
 
+# What's new in 2.0.5!
+
+- Initial Splunk 8 and Python 3 support.  (Lowell Alleman, Kintyre)
+- Force single line for header fields (Pedro J Toro)
+- Fixed quoting issues with external calls to `openssl` (Ivan Dvoenosov)
+- Tons of fixups, formatting, and best practices. (Lowell Alleman, Kintyre)
 
 # What's new in 2.0.4!
 
