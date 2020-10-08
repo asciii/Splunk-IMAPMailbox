@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 
 __doc__ = """
 
@@ -31,6 +32,7 @@ __doc__ = """
 #
 """
 
+
 import getopt, sys, imaplib, os, email, logging, time
 import subprocess, traceback, datetime, io, base64, quopri
 
@@ -38,6 +40,15 @@ try:
     from configparser import RawConfigParser
 except ImportError:
     from ConfigParser import RawConfigParser
+
+
+def struni(s):
+    return s
+    '''
+    if hasattr(s, "decode"):
+        s.decode("ascii", "replace")
+    return s
+    '''
 
 
 # Generic error class
@@ -315,7 +326,7 @@ class IMAPProcessor(object):
     # Method will login and iterate through each folder
     # --------------------------------------------------
     def getMail(self):
-        logging.debug("VERSION = " + str(self.version))
+        logging.debug("VERSION=%s  (%s)", self.version, sys.version.splitlines()[0])
 
         # If the user supplied encrypted password then we need to unencrypt.
         if self.xpassword:
@@ -412,7 +423,7 @@ class IMAPProcessor(object):
         try:
             # get message id we read up to last time (0 first time)
             latestTime = self.getCacheIDForMailbox(box)
-            logging.debug("using last time of " + latestTime)
+            logging.debug("using last time of %s", latestTime)
 
             # Select the mail box at hand, or * for defult
             if box == "*":
@@ -420,14 +431,18 @@ class IMAPProcessor(object):
             else:
                 resCode, resText = M.select(box)
 
-                endid = int(resText[0])
+                try:
+                    endid = int(resText[0])
+                except ValueError:
+                    logging.info("Unable to get end id for box=%s.   Response:  %s", box, resText[0])
+                    return
             if endid < 1:
                 return
 
             # each mailbox is its own source. i
             # We use the ***SPLUNK*** header processor trick to change sources for each event
             # each of the below must be on its own line, thus the breaker text after.
-            print("***SPLUNK*** source="+box + " sourcetype=imap host=" + self.server)
+            print("***SPLUNK*** source={} sourcetype=imap host={}".format(box, self.server))
             print(self.END_IMAP_BREAKER)
 
             if latestTime == "":
@@ -564,7 +579,7 @@ class IMAPProcessor(object):
                 cstr.write('WARNING - could not decode base64' + '\n')
         #pj suggested improvement by vragosta to get rid of occasional " =20" at end of lines.
         #cstr.write(body + '\n')
-        cstr.write(quopri.decodestring(body) + '\n')
+        cstr.write(quopri.decodestring(body).decode("ascii", "replace") + '\n')
 
     # -------------------------------------------------
     # Get and print to STDOUT the mail message
@@ -586,7 +601,7 @@ class IMAPProcessor(object):
                 _, data = M.fetch(num, '(BODY.PEEK[])')
                 #typ, data = M.fetch(num, '(RFC822)')
                 body = data[0][1]
-            except:
+            except Exception as e:
                 logging.debug("Fetch error" + num )
                 if self.debug:
                     logging.debug(e)
@@ -610,8 +625,7 @@ class IMAPProcessor(object):
                         dstr = message[date_attr]
                         break
 
-            cstr.write('Date = "' + dstr + '"\n')
-
+            cstr.write('Date = "{}"\n'.format(struni(dstr)))
 
             for k, v in message.items():
                 lk = k.lower()
@@ -626,11 +640,11 @@ class IMAPProcessor(object):
             # include size and name of folder since they are not part of header
             # interestingly, sometimes these come back quoted - so check.
             if box[0] in ("'", '"'):
-                cstr.write('mailbox = ' + box + '\n')
+                cstr.write('mailbox = {}\n'.format(box))
             else:
-                cstr.write('mailbox = "' + box + '"\n')
+                cstr.write('mailbox = "{}"\n'.format(box))
 
-            cstr.write("size = "+size + '\n')
+            cstr.write("size = {}\n".format(size))
 
             # If option includeBody is True then print STOUT the mail body.
             if self.includeBody:
@@ -641,11 +655,11 @@ class IMAPProcessor(object):
                 if self.useBodySourceType:
                    # hardcoded the changing of sourcetype to mailbody.
                     # customers can change the procssing of mailbody's differently in props.conf
-                    cstr.write("EndIMAPHeader" + '\n')
-                    cstr.write("sourcetype=" + self.bodySourceType + '\n')
+                    cstr.write("EndIMAPHeader\n")
+                    cstr.write("sourcetype={}\n".format(self.bodySourceType))
 
                     # if we are breaking up the event we need to spit out a timestamp.
-                    cstr.write("date = " + message['date'] + '\n')
+                    cstr.write("date = {}\n".format(message['date']))
 
 
                 # if the message is not multipart - its text so just dump it out.
@@ -666,14 +680,16 @@ class IMAPProcessor(object):
             else:
                 if self.debug:
                     for part in message.walk():
-                        cstr.write("ContentType :       " + part.get_content_type() + '\n')
+                        cstr.write("ContentType :       {}\n".format(part.get_content_type()))
                         logging.debug("No message context to print as value includeBody is set to False")
 
             cstr.write(self.END_IMAP_BREAKER)
 
             if self.useBodySourceType:
                 # set us back to mail sourcetype
-                cstr.write("***splunk*** sourcetype=" + self.headerSourceType + '\n')
+                cstr.write("***splunk*** sourcetype={}\n".format(self.headerSourceType))
+
+            # Write event to splunk
             print(cstr.getvalue())
 
             # if delete when done, then mark the message

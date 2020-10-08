@@ -30,3 +30,4 @@ venv
 pip-log.txt
 *.dist-info/
 *.egg-info/
+.release
