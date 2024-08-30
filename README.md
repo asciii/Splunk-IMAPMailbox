@@ -134,6 +134,9 @@ In my case I forward all unix root system messages to one mailbox that I index f
 
 I've signed up for mailing lists to my indexed email address and create reports and alerts based on only certain content I'm interested in looking for.
 
+# What's new on 30/8/2024
+
+- updated code to be python3 compatible
 
 # What's new in 2.0.4!
 
